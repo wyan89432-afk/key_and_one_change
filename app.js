@@ -1,4 +1,4 @@
-const state = { headers: [], data: [], matches: [], sequentialOnly: false };
+const state = { headers: [], data: [], matches: [], sequentialOnly: false, sequentialChains: [] };
 const COLORS = ['yellow', 'green', 'red', 'blue', 'brown'];
 const $ = id => document.getElementById(id);
 
@@ -16,11 +16,8 @@ function parseP(value) {
   return m ? Number(m[1]) : null;
 }
 
-// 1-change rule:
-// - Digit positions/order do NOT matter.
-// - Exactly two digits must be shared.
-// - The remaining digit changes by +1 or -1.
-// - Digits are circular, so 0 <-> 9 is also one change.
+// 1-change rule: digit order does not matter. Exactly two digits are shared,
+// and the remaining digit changes by +/-1. Digits are circular: 0 <-> 9.
 function isOneChange(a, b) {
   const x = normalize3(a), y = normalize3(b);
   if (!/^\d{3}$/.test(x) || !/^\d{3}$/.test(y)) return false;
@@ -34,13 +31,11 @@ function isOneChange(a, b) {
   for (let d = 0; d <= 9; d++) shared += Math.min(countA[d], countB[d]);
   if (shared !== 2) return false;
 
-  let from = -1;
-  let to = -1;
+  let from = -1, to = -1;
   for (let d = 0; d <= 9; d++) {
     if (countA[d] > countB[d]) from = d;
     if (countB[d] > countA[d]) to = d;
   }
-
   if (from < 0 || to < 0) return false;
   const diff = Math.abs(from - to);
   return diff === 1 || diff === 9;
@@ -51,6 +46,7 @@ function loadMatrix(matrix, sourceName = 'Uploaded table') {
   const width = Math.max(...matrix.map(r => Array.isArray(r) ? r.length : 0));
   state.headers = Array.from({ length: width }, (_, c) => normalize3(matrix[0]?.[c]) || String(matrix[0]?.[c] ?? '').trim());
   state.data = matrix.slice(1).map(row => Array.from({ length: width }, (_, c) => normalize3(row?.[c])));
+  state.sequentialChains = [];
   renderFixedTable();
   $('tableMeta').textContent = `${state.data.length} rows × ${state.headers.length} columns • ${sourceName}`;
   $('resultStatus').textContent = 'Ready. Enter 0p–7p and paste numbers, then Calculate.';
@@ -77,6 +73,8 @@ function renderFixedTable(highlights = new Map()) {
     row.forEach((v, c) => {
       const td = document.createElement('td');
       td.textContent = v;
+      td.dataset.row = r;
+      td.dataset.col = c;
       const hit = highlights.get(`${c}:${r}`);
       if (hit) {
         td.classList.add(`hit-${hit.color}`);
@@ -90,14 +88,13 @@ function renderFixedTable(highlights = new Map()) {
   const wrap = $('fixedTable');
   wrap.innerHTML = '';
   wrap.appendChild(table);
+  requestAnimationFrame(() => drawSequentialArrows());
 }
 
 function getNumbers() {
   return $('inputNumbers').value.split(/[\s,;]+/).map(normalize3).filter(v => /^\d{3}$/.test(v));
 }
 
-// Find every individual 1-change match. Individual matches are colored
-// immediately; a complete sequence is not required unless Sequential is on.
 function findAllMatches(inputs) {
   const matches = [];
   const rows = state.data.length;
@@ -121,53 +118,119 @@ function findAllMatches(inputs) {
       }
     }
   });
-
   return matches;
 }
 
-// Sequential mode keeps only matches that form an ordered chain inside the
-// same column: yellow -> green -> red -> blue -> brown (then yellow again).
-// Rows must increase downward. The chain may have gaps; it only needs to keep
-// the required color/input order. Single isolated matches are removed.
+// In sequential mode, follow the table's column-major order. Start with input
+// #1 (yellow), then find input #2 (green) after it. If the current column ends,
+// the search naturally continues at the first row of the next column. Continue
+// through all pasted inputs. Only chains with at least two ordered matches stay.
 function filterSequentialMatches(matches) {
+  state.sequentialChains = [];
   if (!matches.length) return [];
 
-  const byColumn = new Map();
+  const byIndex = new Map();
   matches.forEach(m => {
-    if (!byColumn.has(m.col)) byColumn.set(m.col, []);
-    byColumn.get(m.col).push(m);
+    if (!byIndex.has(m.index)) byIndex.set(m.index, []);
+    byIndex.get(m.index).push(m);
   });
+  byIndex.forEach(list => list.sort((a, b) => a.linear - b.linear || a.col - b.col || a.row - b.row));
 
-  const kept = [];
-  byColumn.forEach(columnMatches => {
-    columnMatches.sort((a, b) => a.row - b.row || a.index - b.index);
+  const starts = byIndex.get(1) || [];
+  for (const start of starts) {
+    const chain = [start];
+    let previous = start.linear;
+    let wanted = 2;
 
-    for (let i = 0; i < columnMatches.length; i++) {
-      const start = columnMatches[i];
-      let chain = [start];
-      let nextIndex = (start.index % COLORS.length) + 1;
-      let lastRow = start.row;
-
-      for (let j = i + 1; j < columnMatches.length; j++) {
-        const candidate = columnMatches[j];
-        if (candidate.row <= lastRow) continue;
-        if (candidate.index === nextIndex) {
-          chain.push(candidate);
-          lastRow = candidate.row;
-          nextIndex = (nextIndex % COLORS.length) + 1;
-        }
-      }
-
-      // Keep only genuine ordered pairs/chains. If all five colors are used,
-      // the next expected color can wrap to yellow naturally.
-      if (chain.length >= 2) kept.push(...chain);
+    while (byIndex.has(wanted)) {
+      const next = byIndex.get(wanted).find(m => m.linear > previous);
+      if (!next) break;
+      chain.push(next);
+      previous = next.linear;
+      wanted++;
     }
-  });
 
-  // The same cell can be reached by more than one starting point. De-duplicate.
+    if (chain.length >= 2) state.sequentialChains.push(chain);
+  }
+
   const unique = new Map();
-  kept.forEach(m => unique.set(`${m.col}:${m.row}:${m.index}`, m));
-  return Array.from(unique.values()).sort((a, b) => a.col - b.col || a.row - b.row || a.index - b.index);
+  state.sequentialChains.forEach(chain => chain.forEach(m => {
+    const key = `${m.col}:${m.row}:${m.index}`;
+    if (!unique.has(key)) unique.set(key, m);
+  }));
+
+  return Array.from(unique.values()).sort((a, b) => a.linear - b.linear || a.index - b.index);
+}
+
+function drawSequentialArrows() {
+  const wrap = $('fixedTable');
+  const old = wrap.querySelector('.arrow-layer');
+  if (old) old.remove();
+  if (!state.sequentialOnly || !state.sequentialChains.length) return;
+
+  const table = wrap.querySelector('.data-table');
+  if (!table) return;
+
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.classList.add('arrow-layer');
+  svg.setAttribute('width', table.offsetWidth);
+  svg.setAttribute('height', table.offsetHeight);
+  svg.setAttribute('viewBox', `0 0 ${table.offsetWidth} ${table.offsetHeight}`);
+  svg.setAttribute('aria-hidden', 'true');
+
+  const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+  const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+  marker.setAttribute('id', 'blueArrowHead');
+  marker.setAttribute('markerWidth', '8');
+  marker.setAttribute('markerHeight', '8');
+  marker.setAttribute('refX', '7');
+  marker.setAttribute('refY', '4');
+  marker.setAttribute('orient', 'auto');
+  const head = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  head.setAttribute('d', 'M0,0 L8,4 L0,8 Z');
+  head.setAttribute('fill', '#1683ff');
+  marker.appendChild(head);
+  defs.appendChild(marker);
+  svg.appendChild(defs);
+
+  const point = m => table.querySelector(`td[data-row="${m.row}"][data-col="${m.col}"]`);
+  const rect = el => {
+    const r = el.getBoundingClientRect();
+    const wr = wrap.getBoundingClientRect();
+    return { left: r.left - wr.left + wrap.scrollLeft, right: r.right - wr.left + wrap.scrollLeft, top: r.top - wr.top + wrap.scrollTop, bottom: r.bottom - wr.top + wrap.scrollTop, midY: (r.top + r.bottom) / 2 - wr.top + wrap.scrollTop };
+  };
+
+  const addArrow = (a, b) => {
+    const ca = point(a), cb = point(b);
+    if (!ca || !cb) return;
+    const A = rect(ca), B = rect(cb);
+    const sameColumn = a.col === b.col;
+    let x1, y1, x2, y2, d;
+
+    if (sameColumn) {
+      const side = Math.min(table.offsetWidth - 6, Math.max(A.right, B.right) + 13);
+      x1 = A.right + 2; y1 = A.midY;
+      x2 = B.right + 2; y2 = B.midY;
+      const bend = side;
+      d = `M ${x1} ${y1} C ${bend} ${y1}, ${bend} ${y2}, ${x2} ${y2}`;
+    } else {
+      x1 = A.right + 2; y1 = A.midY;
+      x2 = B.left - 2; y2 = B.midY;
+      const dx = Math.max(24, Math.abs(x2 - x1) * 0.45);
+      d = `M ${x1} ${y1} C ${x1 + dx} ${y1 - 18}, ${x2 - dx} ${y2 + 18}, ${x2} ${y2}`;
+    }
+
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', d);
+    path.setAttribute('class', 'sequence-arrow');
+    path.setAttribute('marker-end', 'url(#blueArrowHead)');
+    svg.appendChild(path);
+  };
+
+  state.sequentialChains.forEach(chain => {
+    for (let i = 0; i < chain.length - 1; i++) addArrow(chain[i], chain[i + 1]);
+  });
+  wrap.appendChild(svg);
 }
 
 function calculate() {
@@ -180,9 +243,9 @@ function calculate() {
     $('resultStatus').textContent = 'Please enter 0p, 1p, 2p, 3p, 4p, 5p, 6p or 7p.';
     return;
   }
-
   if (!nums.length) {
     $('resultStatus').textContent = 'Paste at least one 3-digit number.';
+    state.sequentialChains = [];
     renderFixedTable();
     $('resultTable').innerHTML = '';
     return;
@@ -190,9 +253,9 @@ function calculate() {
 
   const allMatches = findAllMatches(nums);
   const matches = state.sequentialOnly ? filterSequentialMatches(allMatches) : allMatches;
-  const highlights = new Map();
+  if (!state.sequentialOnly) state.sequentialChains = [];
 
-  // If multiple inputs match the same cell, keep the earliest input's color.
+  const highlights = new Map();
   matches.forEach(match => {
     const key = `${match.col}:${match.row}`;
     if (!highlights.has(key)) highlights.set(key, match);
@@ -217,12 +280,10 @@ function renderResults(matches, total, p, allCount = matches.length) {
   const wrap = $('resultTable');
   wrap.innerHTML = '';
   if (!matches.length) return;
-
   const table = document.createElement('table');
   table.className = 'result-table';
   table.innerHTML = '<thead><tr><th>#</th><th>Input</th><th>Matched</th><th>Column</th><th>Row</th><th>Color</th></tr></thead>';
   const body = document.createElement('tbody');
-
   matches.forEach(m => {
     const tr = document.createElement('tr');
     [m.index, m.input, m.value, state.headers[m.col], m.row + 1, m.color].forEach((v, i) => {
@@ -233,7 +294,6 @@ function renderResults(matches, total, p, allCount = matches.length) {
     });
     body.appendChild(tr);
   });
-
   table.appendChild(body);
   wrap.appendChild(table);
 }
@@ -241,12 +301,8 @@ function renderResults(matches, total, p, allCount = matches.length) {
 $('inputNumbers').addEventListener('input', () => {
   $('inputStats').textContent = `${getNumbers().length} numbers`;
 });
-
 $('calculateBtn').addEventListener('click', calculate);
-$('pattern').addEventListener('keydown', e => {
-  if (e.key === 'Enter') calculate();
-});
-
+$('pattern').addEventListener('keydown', e => { if (e.key === 'Enter') calculate(); });
 $('sequentialBtn').addEventListener('click', () => {
   state.sequentialOnly = !state.sequentialOnly;
   const btn = $('sequentialBtn');
@@ -254,12 +310,12 @@ $('sequentialBtn').addEventListener('click', () => {
   btn.textContent = state.sequentialOnly ? 'အစဉ်လိုက် ✓' : 'အစဉ်လိုက်';
   calculate();
 });
-
 $('clearBtn').addEventListener('click', () => {
   $('inputNumbers').value = '';
   $('pattern').value = '0p';
   $('resultTable').innerHTML = '';
   $('inputStats').textContent = '0 numbers';
+  state.sequentialChains = [];
   if (state.sequentialOnly) {
     state.sequentialOnly = false;
     $('sequentialBtn').classList.remove('active');
@@ -268,7 +324,6 @@ $('clearBtn').addEventListener('click', () => {
   if (state.data.length) renderFixedTable();
   $('resultStatus').textContent = state.data.length ? 'Cleared.' : 'Upload the fixed table to begin.';
 });
-
 $('fileInput').addEventListener('change', async e => {
   const file = e.target.files?.[0];
   if (!file) return;
@@ -280,7 +335,6 @@ $('fileInput').addEventListener('change', async e => {
     $('resultStatus').textContent = `Could not read file: ${err.message}`;
   }
 });
-
 async function loadDefault() {
   try {
     const res = await fetch('fixed-table.csv', { cache: 'no-store' });
@@ -292,5 +346,4 @@ async function loadDefault() {
     $('resultStatus').textContent = 'Upload the fixed table to begin.';
   }
 }
-
 loadDefault();
