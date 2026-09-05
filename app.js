@@ -16,34 +16,36 @@ function parseP(value) {
   return m ? Number(m[1]) : null;
 }
 
-function oneChangeVariants(number) {
-  const s = normalize3(number), out = new Set();
-  if (!/^\d{3}$/.test(s)) return [];
-  for (let i = 0; i < 3; i++) {
-    const d = Number(s[i]);
-    for (const delta of [-1, 1]) {
-      const nd = d + delta;
-      if (nd >= 0 && nd <= 9) {
-        const a = s.split('');
-        a[i] = String(nd);
-        out.add(a.join(''));
-      }
-    }
-  }
-  return [...out];
-}
-
+// 1-change rule:
+// - Digit positions/order do NOT matter.
+// - Exactly two digits must be shared.
+// - The remaining digit changes by +1 or -1.
+// - Digits are circular, so 0 <-> 9 is also one change.
 function isOneChange(a, b) {
   const x = normalize3(a), y = normalize3(b);
   if (!/^\d{3}$/.test(x) || !/^\d{3}$/.test(y)) return false;
-  let changed = 0;
-  for (let i = 0; i < 3; i++) {
-    if (x[i] !== y[i]) {
-      changed++;
-      if (Math.abs(Number(x[i]) - Number(y[i])) !== 1) return false;
-    }
+
+  const countA = Array(10).fill(0);
+  const countB = Array(10).fill(0);
+  for (const ch of x) countA[Number(ch)]++;
+  for (const ch of y) countB[Number(ch)]++;
+
+  let shared = 0;
+  for (let d = 0; d <= 9; d++) {
+    shared += Math.min(countA[d], countB[d]);
   }
-  return changed === 1;
+  if (shared !== 2) return false;
+
+  let from = -1;
+  let to = -1;
+  for (let d = 0; d <= 9; d++) {
+    if (countA[d] > countB[d]) from = d;
+    if (countB[d] > countA[d]) to = d;
+  }
+
+  if (from < 0 || to < 0) return false;
+  const diff = Math.abs(from - to);
+  return diff === 1 || diff === 9;
 }
 
 function loadMatrix(matrix, sourceName = 'Uploaded table') {
@@ -108,39 +110,33 @@ function cellAtLinear(linear) {
   return { linear, row, col, value: state.data[row]?.[col] || '' };
 }
 
-// IMPORTANT: Do not color a partial match. A valid result is a COMPLETE
-// sequence containing every pasted number.
-// 0p = consecutive cells.
-// 1p = one cell gap between each checked number.
-// 2p = two cell gaps, etc.
-function findCompleteSequence(inputs, startLinear, p) {
-  if (!inputs.length) return null;
+// Find every individual 1-change match. Individual matches are colored
+// immediately; a complete sequence is no longer required for coloring.
+function findAllMatches(inputs) {
+  const matches = [];
   const rows = state.data.length;
   const cols = state.headers.length;
-  const total = rows * cols;
-  const step = p + 1;
 
-  for (let start = Math.max(0, startLinear); start < total; start++) {
-    const sequence = [];
-    let valid = true;
-
-    for (let i = 0; i < inputs.length; i++) {
-      const linear = start + i * step;
-      const cell = cellAtLinear(linear);
-      if (!cell || !isOneChange(inputs[i], cell.value)) {
-        valid = false;
-        break;
+  inputs.forEach((input, inputIndex) => {
+    for (let col = 0; col < cols; col++) {
+      for (let row = 0; row < rows; row++) {
+        const value = state.data[row]?.[col] || '';
+        if (isOneChange(input, value)) {
+          matches.push({
+            linear: col * rows + row,
+            row,
+            col,
+            value,
+            input,
+            index: inputIndex + 1,
+            color: COLORS[inputIndex % COLORS.length]
+          });
+        }
       }
-      sequence.push({
-        ...cell,
-        input: inputs[i],
-        index: i + 1
-      });
     }
+  });
 
-    if (valid) return sequence;
-  }
-  return null;
+  return matches;
 }
 
 function calculate() {
@@ -161,19 +157,14 @@ function calculate() {
     return;
   }
 
-  // Search for ONE complete sequence. Only after all numbers match do we
-  // apply the five-color cycle to the matched cells.
-  const sequence = findCompleteSequence(nums, 0, p);
-  const matches = [];
+  const matches = findAllMatches(nums);
   const highlights = new Map();
 
-  if (sequence) {
-    sequence.forEach((match, i) => {
-      const item = { ...match, color: COLORS[i % COLORS.length] };
-      matches.push(item);
-      highlights.set(`${match.col}:${match.row}`, item);
-    });
-  }
+  // If multiple inputs match the same cell, keep the earliest input's color.
+  matches.forEach(match => {
+    const key = `${match.col}:${match.row}`;
+    if (!highlights.has(key)) highlights.set(key, match);
+  });
 
   state.matches = matches;
   renderFixedTable(highlights);
@@ -181,11 +172,9 @@ function calculate() {
 }
 
 function renderResults(matches, total, p) {
-  if (matches.length === total) {
-    $('resultStatus').textContent = `Complete: ${total}/${total} numbers matched using ${p}p.`;
-  } else {
-    $('resultStatus').textContent = `No complete ${total}-number sequence found using ${p}p. Nothing was colored.`;
-  }
+  $('resultStatus').textContent = matches.length
+    ? `${matches.length} individual 1-change match${matches.length === 1 ? '' : 'es'} found • ${p}p selected.`
+    : `No individual 1-change matches found • ${p}p selected.`;
 
   const wrap = $('resultTable');
   wrap.innerHTML = '';
