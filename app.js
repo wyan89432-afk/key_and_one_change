@@ -1,4 +1,4 @@
-const state = { headers: [], data: [], matches: [] };
+const state = { headers: [], data: [], matches: [], sequentialOnly: false };
 const COLORS = ['yellow', 'green', 'red', 'blue', 'brown'];
 const $ = id => document.getElementById(id);
 
@@ -31,9 +31,7 @@ function isOneChange(a, b) {
   for (const ch of y) countB[Number(ch)]++;
 
   let shared = 0;
-  for (let d = 0; d <= 9; d++) {
-    shared += Math.min(countA[d], countB[d]);
-  }
+  for (let d = 0; d <= 9; d++) shared += Math.min(countA[d], countB[d]);
   if (shared !== 2) return false;
 
   let from = -1;
@@ -98,20 +96,8 @@ function getNumbers() {
   return $('inputNumbers').value.split(/[\s,;]+/).map(normalize3).filter(v => /^\d{3}$/.test(v));
 }
 
-// Convert the table to the exact checking order: column 1 row 1→last row,
-// then column 2 row 1→last row, and so on.
-function cellAtLinear(linear) {
-  const rows = state.data.length;
-  const cols = state.headers.length;
-  const total = rows * cols;
-  if (linear < 0 || linear >= total) return null;
-  const col = Math.floor(linear / rows);
-  const row = linear % rows;
-  return { linear, row, col, value: state.data[row]?.[col] || '' };
-}
-
 // Find every individual 1-change match. Individual matches are colored
-// immediately; a complete sequence is no longer required for coloring.
+// immediately; a complete sequence is not required unless Sequential is on.
 function findAllMatches(inputs) {
   const matches = [];
   const rows = state.data.length;
@@ -139,6 +125,51 @@ function findAllMatches(inputs) {
   return matches;
 }
 
+// Sequential mode keeps only matches that form an ordered chain inside the
+// same column: yellow -> green -> red -> blue -> brown (then yellow again).
+// Rows must increase downward. The chain may have gaps; it only needs to keep
+// the required color/input order. Single isolated matches are removed.
+function filterSequentialMatches(matches) {
+  if (!matches.length) return [];
+
+  const byColumn = new Map();
+  matches.forEach(m => {
+    if (!byColumn.has(m.col)) byColumn.set(m.col, []);
+    byColumn.get(m.col).push(m);
+  });
+
+  const kept = [];
+  byColumn.forEach(columnMatches => {
+    columnMatches.sort((a, b) => a.row - b.row || a.index - b.index);
+
+    for (let i = 0; i < columnMatches.length; i++) {
+      const start = columnMatches[i];
+      let chain = [start];
+      let nextIndex = (start.index % COLORS.length) + 1;
+      let lastRow = start.row;
+
+      for (let j = i + 1; j < columnMatches.length; j++) {
+        const candidate = columnMatches[j];
+        if (candidate.row <= lastRow) continue;
+        if (candidate.index === nextIndex) {
+          chain.push(candidate);
+          lastRow = candidate.row;
+          nextIndex = (nextIndex % COLORS.length) + 1;
+        }
+      }
+
+      // Keep only genuine ordered pairs/chains. If all five colors are used,
+      // the next expected color can wrap to yellow naturally.
+      if (chain.length >= 2) kept.push(...chain);
+    }
+  });
+
+  // The same cell can be reached by more than one starting point. De-duplicate.
+  const unique = new Map();
+  kept.forEach(m => unique.set(`${m.col}:${m.row}:${m.index}`, m));
+  return Array.from(unique.values()).sort((a, b) => a.col - b.col || a.row - b.row || a.index - b.index);
+}
+
 function calculate() {
   if (!state.data.length) return;
   const p = parseP($('pattern').value);
@@ -157,7 +188,8 @@ function calculate() {
     return;
   }
 
-  const matches = findAllMatches(nums);
+  const allMatches = findAllMatches(nums);
+  const matches = state.sequentialOnly ? filterSequentialMatches(allMatches) : allMatches;
   const highlights = new Map();
 
   // If multiple inputs match the same cell, keep the earliest input's color.
@@ -168,13 +200,19 @@ function calculate() {
 
   state.matches = matches;
   renderFixedTable(highlights);
-  renderResults(matches, nums.length, p);
+  renderResults(matches, nums.length, p, allMatches.length);
 }
 
-function renderResults(matches, total, p) {
-  $('resultStatus').textContent = matches.length
-    ? `${matches.length} individual 1-change match${matches.length === 1 ? '' : 'es'} found • ${p}p selected.`
-    : `No individual 1-change matches found • ${p}p selected.`;
+function renderResults(matches, total, p, allCount = matches.length) {
+  if (state.sequentialOnly) {
+    $('resultStatus').textContent = matches.length
+      ? `${matches.length} sequential 1-change match${matches.length === 1 ? '' : 'es'} kept • ${allCount - matches.length} non-sequential hidden • ${p}p selected.`
+      : `No sequential 1-change matches found • ${allCount} individual matches hidden • ${p}p selected.`;
+  } else {
+    $('resultStatus').textContent = matches.length
+      ? `${matches.length} individual 1-change match${matches.length === 1 ? '' : 'es'} found • ${p}p selected.`
+      : `No individual 1-change matches found • ${p}p selected.`;
+  }
 
   const wrap = $('resultTable');
   wrap.innerHTML = '';
@@ -209,11 +247,24 @@ $('pattern').addEventListener('keydown', e => {
   if (e.key === 'Enter') calculate();
 });
 
+$('sequentialBtn').addEventListener('click', () => {
+  state.sequentialOnly = !state.sequentialOnly;
+  const btn = $('sequentialBtn');
+  btn.classList.toggle('active', state.sequentialOnly);
+  btn.textContent = state.sequentialOnly ? 'အစဉ်လိုက် ✓' : 'အစဉ်လိုက်';
+  calculate();
+});
+
 $('clearBtn').addEventListener('click', () => {
   $('inputNumbers').value = '';
   $('pattern').value = '0p';
   $('resultTable').innerHTML = '';
   $('inputStats').textContent = '0 numbers';
+  if (state.sequentialOnly) {
+    state.sequentialOnly = false;
+    $('sequentialBtn').classList.remove('active');
+    $('sequentialBtn').textContent = 'အစဉ်လိုက်';
+  }
   if (state.data.length) renderFixedTable();
   $('resultStatus').textContent = state.data.length ? 'Cleared.' : 'Upload the fixed table to begin.';
 });
