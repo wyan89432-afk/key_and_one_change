@@ -23,7 +23,6 @@ function renderThreeTable(highlights) {
   const wrap = $('threeResultTable');
   wrap.innerHTML = '';
   if (!state.headers.length) return;
-
   const table = document.createElement('table');
   table.className = 'data-table three-change-data-table';
   const thead = document.createElement('thead');
@@ -32,7 +31,6 @@ function renderThreeTable(highlights) {
   rowHead.textContent = '0';
   rowHead.className = 'row-index-head';
   hr.appendChild(rowHead);
-
   state.headers.forEach((h, c) => {
     const th = document.createElement('th');
     th.textContent = h || `C${c + 1}`;
@@ -42,7 +40,6 @@ function renderThreeTable(highlights) {
   });
   thead.appendChild(hr);
   table.appendChild(thead);
-
   const tbody = document.createElement('tbody');
   state.data.forEach((row, r) => {
     const tr = document.createElement('tr');
@@ -77,14 +74,12 @@ function drawThreeSequentialArrows() {
   if (!state.sequentialOnly || !state.threeChains?.length) return;
   const table = wrap.querySelector('.three-change-data-table');
   if (!table) return;
-
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.classList.add('arrow-layer');
   svg.setAttribute('width', table.offsetWidth);
   svg.setAttribute('height', table.offsetHeight);
   svg.setAttribute('viewBox', `0 0 ${table.offsetWidth} ${table.offsetHeight}`);
   svg.setAttribute('aria-hidden', 'true');
-
   const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
   const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
   marker.setAttribute('id', 'three-blueArrowHead');
@@ -99,17 +94,11 @@ function drawThreeSequentialArrows() {
   marker.appendChild(head);
   defs.appendChild(marker);
   svg.appendChild(defs);
-
   const point = m => table.querySelector(`td[data-row="${m.row}"][data-col="${m.col}"]`);
   const rect = el => {
     const r = el.getBoundingClientRect(), wr = wrap.getBoundingClientRect();
-    return {
-      left: r.left - wr.left + wrap.scrollLeft,
-      right: r.right - wr.left + wrap.scrollLeft,
-      midY: (r.top + r.bottom) / 2 - wr.top + wrap.scrollTop
-    };
+    return { left: r.left - wr.left + wrap.scrollLeft, right: r.right - wr.left + wrap.scrollLeft, midY: (r.top + r.bottom) / 2 - wr.top + wrap.scrollTop };
   };
-
   state.threeChains.forEach(chain => {
     for (let i = 0; i < chain.length - 1; i++) {
       const ca = point(chain[i]), cb = point(chain[i + 1]);
@@ -157,7 +146,6 @@ function calculateThreeChange() {
     $('threeResultStatus').textContent = 'Paste at least one 3-digit number.';
     return;
   }
-
   const allThree = findAllMatches(nums, isThreeChange);
   const threeMatches = state.sequentialOnly
     ? filterSequentialMatches(allThree, p, nums.length, state.threeChains)
@@ -169,20 +157,30 @@ function calculateThreeChange() {
   renderDetails('threeMatchDetails', threeMatches);
 }
 
-// Extend the shared Calculate action so all three working tables update together.
 const previousCalculate = calculate;
 calculate = function () {
   previousCalculate();
   calculateThreeChange();
 };
 
-// Add state fields without changing the existing app structure.
+const previousUpdateMeta = updateMeta;
+updateMeta = function (sourceName = 'Edited working table') {
+  previousUpdateMeta(sourceName);
+  if ($('threeChangeMeta')) $('threeChangeMeta').textContent = `${state.data.length} rows × ${state.headers.length} columns`;
+};
+
 state.threeMatches = state.threeMatches || [];
 state.threeChains = state.threeChains || [];
-$('threeChangeMeta').textContent = state.data.length && state.headers.length
-  ? `${state.data.length} rows × ${state.headers.length} columns`
-  : 'No table loaded';
+if ($('threeChangeMeta')) {
+  $('threeChangeMeta').textContent = state.data.length && state.headers.length ? `${state.data.length} rows × ${state.headers.length} columns` : 'No table loaded';
+}
 
-// app.js loads the default table before this extension file. Recalculate once so
-// the new table is populated immediately after the extension is loaded.
+$('clearBtn').addEventListener('click', () => {
+  state.threeMatches = [];
+  state.threeChains = [];
+  if ($('threeMatchDetails')) $('threeMatchDetails').innerHTML = '';
+  if ($('threeResultStatus')) $('threeResultStatus').textContent = state.data.length ? 'Cleared.' : 'Upload the fixed table to begin.';
+  renderThreeTable(new Map());
+});
+
 if (state.data.length) calculateThreeChange();
