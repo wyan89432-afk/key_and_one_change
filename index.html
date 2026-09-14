@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Fixed Table • 1 & 2 Change Search</title>
+  <title>Fixed Table • 1, 2 & 3 Change Search</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <main class="app">
     <header class="hero">
-      <div><h1>Fixed Table • 1 & 2 Change Search</h1><p>Upload the fixed table, paste 3-digit numbers, then search with 0p–7p.</p></div>
+      <div><h1>Fixed Table • 1, 2 & 3 Change Search</h1><p>Upload the fixed table, paste 3-digit numbers, then search with 0p–7p.</p></div>
       <label class="upload"><span>📁 Upload Fixed Table</span><input id="fileInput" type="file" accept=".csv,.xlsx,.xls" /></label>
     </header>
 
@@ -21,7 +21,7 @@
         <button id="sequentialBtn" class="sequential-btn" type="button">အစဉ်လိုက်</button>
         <button id="clearBtn" class="secondary">Clear</button>
       </div>
-      <p class="hint">Search bar တစ်ခုတည်းဖြင့် <b>1 Change Table</b> နှင့် <b>Two Change Table</b> နှစ်ခုလုံး အလိုအလျောက်အလုပ်လုပ်ပါမည်။ 0p = cell တစ်ကွက်စီ၊ 1p = တစ်ကွက်ကျော်စီ … 7p ထိ။ အစဉ်လိုက် mode တွင် pasted numbers အစဉ်အတိုင်း အပြည့်ကိုက်သော sequence ကိုသာ ပြပါမည်။ Fixed Table သည် source table သာဖြစ်ပြီး logic / color / arrow မပြပါ။</p>
+      <p class="hint">Search bar တစ်ခုတည်းဖြင့် <b>1 Change</b>၊ <b>Two Change</b> နှင့် <b>Three Change Table</b> သုံးခုလုံး အလိုအလျောက်အလုပ်လုပ်ပါမည်။ 0p–7p နှင့် အစဉ်လိုက် mode ကို သုံးခုလုံးတွင် တူညီစွာအသုံးပြုပါမည်။ Fixed Table သည် source table သာဖြစ်ပြီး logic / color / arrow မပြပါ။</p>
     </section>
 
     <section class="grid two-col">
@@ -54,6 +54,16 @@
 
     <section class="panel">
       <div class="section-head">
+        <div><h2>Three Change Table</h2><p class="muted">3+ and 3− circular digit changes are checked automatically. Digit order does not matter. Colors and blue curve arrows follow the same rules.</p></div>
+        <div id="threeChangeMeta" class="stats">No table loaded</div>
+      </div>
+      <div id="threeResultStatus" class="status">Waiting for table.</div>
+      <div id="threeResultTable" class="result-wrap"></div>
+      <div id="threeMatchDetails" class="result-wrap"></div>
+    </section>
+
+    <section class="panel">
+      <div class="section-head">
         <div><h2>Fixed Table</h2><p class="muted">Source table only. No color, no curve arrow and no sequential logic is drawn here. Leftmost <b>0</b> heading is the row-number column; rows start at 1.</p></div>
         <div id="tableMeta" class="stats">No table loaded</div>
       </div>
@@ -62,5 +72,6 @@
   </main>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="app.js"></script>
+  <script src="three-change.js"></script>
 </body>
 </html>
