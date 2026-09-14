@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Fixed Table • 1 Change Search</title>
+  <title>Fixed Table • 1 & 2 Change Search</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <main class="app">
     <header class="hero">
-      <div><h1>Fixed Table • 1 Change Search</h1><p>Upload the fixed table, paste unlimited 3-digit numbers, then search with 0p–7p.</p></div>
+      <div><h1>Fixed Table • 1 & 2 Change Search</h1><p>Upload the fixed table, paste 3-digit numbers, then search with 0p–7p.</p></div>
       <label class="upload"><span>📁 Upload Fixed Table</span><input id="fileInput" type="file" accept=".csv,.xlsx,.xls" /></label>
     </header>
 
@@ -21,7 +21,7 @@
         <button id="sequentialBtn" class="sequential-btn" type="button">အစဉ်လိုက်</button>
         <button id="clearBtn" class="secondary">Clear</button>
       </div>
-      <p class="hint">Logic အားလုံးသည် <b>1 Change Table</b> မှာသာ ပြပါမည်။ Fixed Table သည် source table ဖြစ်ပြီး color / curve arrow / sequential logic မပြပါ။ 0p = cell တစ်ကွက်စီ၊ 1p = တစ်ကွက်ကျော်စီ … 7p ထိ။ Yellow → Green → Red → Blue → Brown အစဉ်အတိုင်း အပြည့်ကိုက်သော sequence ကိုသာ အစဉ်လိုက် mode မှာ ပြပါမည်။ Column အဆုံးရောက်လျှင် next column ကို ဆက်နိုင်ပါသည်။</p>
+      <p class="hint">Search bar တစ်ခုတည်းဖြင့် <b>1 Change Table</b> နှင့် <b>Two Change Table</b> နှစ်ခုလုံး အလိုအလျောက်အလုပ်လုပ်ပါမည်။ 0p = cell တစ်ကွက်စီ၊ 1p = တစ်ကွက်ကျော်စီ … 7p ထိ။ အစဉ်လိုက် mode တွင် pasted numbers အစဉ်အတိုင်း အပြည့်ကိုက်သော sequence ကိုသာ ပြပါမည်။ Fixed Table သည် source table သာဖြစ်ပြီး logic / color / arrow မပြပါ။</p>
     </section>
 
     <section class="grid two-col">
@@ -30,15 +30,26 @@
         <textarea id="inputNumbers" placeholder="514\n612\n077\n387\n770\n184\n495\n214\n479\n615\n212"></textarea>
         <div class="stats" id="inputStats">0 numbers</div>
       </div>
+
       <div class="panel">
         <div class="section-head">
-          <div><h2>1 Change Table</h2><p class="muted">Search result logic, colors and blue curve arrows appear here only.</p></div>
+          <div><h2>1 Change Table</h2><p class="muted">1-change logic, colors and blue curve arrows appear here.</p></div>
           <div class="table-actions"><button id="addRowBtn" type="button">＋ Row ထည့်</button><button id="addColumnBtn" type="button">＋ Column ထည့်</button></div>
         </div>
         <div id="resultStatus" class="status">Upload the fixed table to begin.</div>
         <div id="resultTable" class="result-wrap"></div>
         <div id="matchDetails" class="result-wrap"></div>
       </div>
+    </section>
+
+    <section class="panel">
+      <div class="section-head">
+        <div><h2>Two Change Table</h2><p class="muted">2+ and 2− circular digit changes are checked automatically. Digit order does not matter. Colors and blue curve arrows follow the same rules as 1 Change Table.</p></div>
+        <div id="twoChangeMeta" class="stats">No table loaded</div>
+      </div>
+      <div id="twoResultStatus" class="status">Waiting for table.</div>
+      <div id="twoResultTable" class="result-wrap"></div>
+      <div id="twoMatchDetails" class="result-wrap"></div>
     </section>
 
     <section class="panel">
