@@ -29,15 +29,12 @@ function parseP(value) {
 function isOneChange(a, b) {
   const x = normalize3(a), y = normalize3(b);
   if (!/^\d{3}$/.test(x) || !/^\d{3}$/.test(y)) return false;
-
   const A = Array(10).fill(0), B = Array(10).fill(0);
   for (const ch of x) A[Number(ch)]++;
   for (const ch of y) B[Number(ch)]++;
-
   let shared = 0;
   for (let d = 0; d <= 9; d++) shared += Math.min(A[d], B[d]);
   if (shared !== 2) return false;
-
   let from = -1, to = -1;
   for (let d = 0; d <= 9; d++) {
     if (A[d] > B[d]) from = d;
@@ -48,11 +45,12 @@ function isOneChange(a, b) {
   return diff === 1 || diff === 9;
 }
 
-function updateMeta(sourceName = 'Edited table') {
+function updateMeta(sourceName = 'Edited working table') {
   $('tableMeta').textContent = `${state.data.length} rows × ${state.headers.length} columns • ${sourceName}`;
 }
 
-function makeCellEditable(td, row, col) {
+// Editing is intentionally available ONLY in the 1 Change Table.
+function makeWorkingCellEditable(td, row, col) {
   td.contentEditable = 'true';
   td.spellcheck = false;
   td.title = 'Tap/click to edit this number';
@@ -61,7 +59,7 @@ function makeCellEditable(td, row, col) {
     state.data[row][col] = normalize3(td.textContent.trim());
     td.textContent = state.data[row][col];
     td.classList.remove('editing');
-    updateMeta('Edited table');
+    updateMeta('Edited working table');
     calculate();
   });
   td.addEventListener('keydown', e => {
@@ -69,7 +67,7 @@ function makeCellEditable(td, row, col) {
   });
 }
 
-function makeHeaderEditable(th, col) {
+function makeWorkingHeaderEditable(th, col) {
   th.contentEditable = 'true';
   th.spellcheck = false;
   th.title = 'Tap/click to edit column heading';
@@ -78,7 +76,7 @@ function makeHeaderEditable(th, col) {
     state.headers[col] = th.textContent.trim();
     th.textContent = state.headers[col] || `C${col + 1}`;
     th.classList.remove('editing');
-    updateMeta('Edited table');
+    updateMeta('Edited working table');
     calculate();
   });
   th.addEventListener('keydown', e => {
@@ -100,8 +98,7 @@ function loadMatrix(matrix, sourceName = 'Uploaded table') {
   calculate();
 }
 
-// FIXED TABLE: source only. It can be edited, but it NEVER receives search
-// colors, sequential filtering or curve arrows.
+// FIXED TABLE = display-only source. No edit, no color, no arrows, no logic.
 function renderFixedTable() {
   if (!state.headers.length) return;
   const table = document.createElement('table');
@@ -113,12 +110,10 @@ function renderFixedTable() {
   rowHead.textContent = '0';
   rowHead.className = 'row-index-head';
   hr.appendChild(rowHead);
-
   state.headers.forEach((h, c) => {
     const th = document.createElement('th');
     th.textContent = h || `C${c + 1}`;
     th.dataset.col = c;
-    makeHeaderEditable(th, c);
     hr.appendChild(th);
   });
   thead.appendChild(hr);
@@ -131,26 +126,23 @@ function renderFixedTable() {
     indexTd.textContent = r + 1;
     indexTd.className = 'row-index';
     tr.appendChild(indexTd);
-
     row.forEach((v, c) => {
       const td = document.createElement('td');
       td.textContent = v;
       td.dataset.row = r;
       td.dataset.col = c;
-      makeCellEditable(td, r, c);
       tr.appendChild(td);
     });
     tbody.appendChild(tr);
   });
   table.appendChild(tbody);
-
   const wrap = $('fixedTable');
   wrap.innerHTML = '';
   wrap.appendChild(table);
 }
 
-// ONE CHANGE TABLE: this is the only place where search logic, colors and
-// blue curve arrows are rendered.
+// 1 CHANGE TABLE = the only working/logic table. All edits, colors and arrows
+// happen here; Fixed Table above stays untouched visually.
 function renderOneChangeTable(highlights = new Map()) {
   const wrap = $('resultTable');
   wrap.innerHTML = '';
@@ -165,10 +157,12 @@ function renderOneChangeTable(highlights = new Map()) {
   rowHead.textContent = '0';
   rowHead.className = 'row-index-head';
   hr.appendChild(rowHead);
+
   state.headers.forEach((h, c) => {
     const th = document.createElement('th');
     th.textContent = h || `C${c + 1}`;
     th.dataset.col = c;
+    makeWorkingHeaderEditable(th, c);
     hr.appendChild(th);
   });
   thead.appendChild(hr);
@@ -192,6 +186,7 @@ function renderOneChangeTable(highlights = new Map()) {
         td.classList.add(`hit-${hit.color}`);
         td.title = `${hit.input} → ${v} • row ${r + 1}, column ${state.headers[c]}`;
       }
+      makeWorkingCellEditable(td, r, c);
       tr.appendChild(td);
     });
     tbody.appendChild(tr);
@@ -209,7 +204,6 @@ function findAllMatches(inputs) {
   const matches = [];
   const rows = state.data.length;
   const cols = state.headers.length;
-
   inputs.forEach((input, inputIndex) => {
     for (let col = 0; col < cols; col++) {
       for (let row = 0; row < rows; row++) {
@@ -231,10 +225,10 @@ function findAllMatches(inputs) {
   return matches;
 }
 
-// Sequential rule:
 // 0p = adjacent cells (step 1), 1p = one cell skipped (step 2), ... 7p.
-// Pasted-number order must be exact: yellow -> green -> red -> blue -> brown.
-// Column-major order is used, so row 24 can continue to next column row 1.
+// Pasted-number order is exact: yellow -> green -> red -> blue -> brown.
+// Column-major order lets a chain continue from the end of one column into
+// the beginning of the next column.
 function filterSequentialMatches(matches, p, inputCount) {
   state.sequentialChains = [];
   if (!matches.length || !inputCount) return [];
@@ -248,12 +242,10 @@ function filterSequentialMatches(matches, p, inputCount) {
 
   const starts = byIndex.get(1) || [];
   const step = p + 1;
-
   for (const start of starts) {
     const chain = [start];
     let wanted = 2;
     let expected = start.linear + step;
-
     while (wanted <= inputCount) {
       const next = (byIndex.get(wanted) || []).find(m => m.linear === expected);
       if (!next) break;
@@ -261,7 +253,6 @@ function filterSequentialMatches(matches, p, inputCount) {
       wanted++;
       expected += step;
     }
-
     if (chain.length === inputCount) state.sequentialChains.push(chain);
   }
 
@@ -270,7 +261,6 @@ function filterSequentialMatches(matches, p, inputCount) {
     const key = `${m.col}:${m.row}:${m.index}`;
     if (!unique.has(key)) unique.set(key, m);
   }));
-
   return Array.from(unique.values()).sort((a, b) => a.linear - b.linear || a.index - b.index);
 }
 
@@ -307,8 +297,7 @@ function drawSequentialArrows() {
 
   const point = m => table.querySelector(`td[data-row="${m.row}"][data-col="${m.col}"]`);
   const rect = el => {
-    const r = el.getBoundingClientRect();
-    const wr = wrap.getBoundingClientRect();
+    const r = el.getBoundingClientRect(), wr = wrap.getBoundingClientRect();
     return {
       left: r.left - wr.left + wrap.scrollLeft,
       right: r.right - wr.left + wrap.scrollLeft,
@@ -328,7 +317,6 @@ function drawSequentialArrows() {
       const x = Math.max(A.right, B.right) + 12;
       d = `M ${A.right + 2} ${A.midY} C ${x} ${A.midY}, ${x} ${B.midY}, ${B.right + 2} ${B.midY}`;
     } else {
-      // Cross-column route stays in the gutter between columns, not across numbers.
       const rightward = b.col > a.col;
       const sourceX = rightward ? A.right + 2 : A.left - 2;
       const gutterX = rightward ? A.right + 8 : A.left - 8;
@@ -353,7 +341,6 @@ function drawSequentialArrows() {
 
 function calculate() {
   if (!state.data.length) return;
-
   const p = parseP($('pattern').value);
   const nums = getNumbers();
   $('inputStats').textContent = `${nums.length} number${nums.length === 1 ? '' : 's'}`;
@@ -363,7 +350,6 @@ function calculate() {
     renderOneChangeTable();
     return;
   }
-
   if (!nums.length) {
     state.sequentialChains = [];
     state.matches = [];
@@ -374,10 +360,7 @@ function calculate() {
   }
 
   const allMatches = findAllMatches(nums);
-  const matches = state.sequentialOnly
-    ? filterSequentialMatches(allMatches, p, nums.length)
-    : allMatches;
-
+  const matches = state.sequentialOnly ? filterSequentialMatches(allMatches, p, nums.length) : allMatches;
   if (!state.sequentialOnly) state.sequentialChains = [];
 
   const highlights = new Map();
@@ -410,7 +393,6 @@ function renderResults(matches, p, allCount = matches.length) {
   table.className = 'result-table';
   table.innerHTML = '<thead><tr><th>#</th><th>Input</th><th>Matched</th><th>Column</th><th>Row</th><th>Color</th></tr></thead>';
   const body = document.createElement('tbody');
-
   matches.forEach(m => {
     const tr = document.createElement('tr');
     [m.index, m.input, m.value, state.headers[m.col], m.row + 1, m.color].forEach((v, i) => {
@@ -430,7 +412,7 @@ function addRow() {
   state.data.push(Array(state.headers.length).fill(''));
   state.rowCount = state.data.length;
   renderFixedTable();
-  updateMeta('Edited table');
+  updateMeta('Edited working table');
   calculate();
 }
 
@@ -440,10 +422,10 @@ function addColumn() {
   state.headers.push(`C${index + 1}`);
   state.data.forEach(row => row.push(''));
   renderFixedTable();
-  updateMeta('Edited table');
+  updateMeta('Edited working table');
   calculate();
   requestAnimationFrame(() => {
-    const th = $('fixedTable').querySelector(`th[data-col="${index}"]`);
+    const th = $('resultTable').querySelector(`th[data-col="${index}"]`);
     if (th) th.scrollIntoView({ inline: 'nearest', block: 'nearest' });
   });
 }
@@ -451,7 +433,6 @@ function addColumn() {
 $('inputNumbers').addEventListener('input', () => {
   $('inputStats').textContent = `${getNumbers().length} numbers`;
 });
-
 $('calculateBtn').addEventListener('click', calculate);
 $('pattern').addEventListener('keydown', e => { if (e.key === 'Enter') calculate(); });
 
