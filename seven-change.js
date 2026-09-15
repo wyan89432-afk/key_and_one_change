@@ -11,7 +11,8 @@ function calculateSevenChange(){
   if(!state.data.length)return; const p=parseP($('pattern').value),nums=getNumbers();
   if(p===null){$('sevenResultStatus').textContent='Please enter 0p–7p.';state.sevenChains=[];renderWorkingTable('sevenResultTable',new Map(),'seven-change-data-table',true);$('sevenMatchDetails').innerHTML='';return;}
   if(!nums.length){state.sevenMatches=[];state.sevenChains=[];renderWorkingTable('sevenResultTable',new Map(),'seven-change-data-table',true);$('sevenMatchDetails').innerHTML='';$('sevenResultStatus').textContent='Paste at least one 3-digit number.';return;}
-  const all=findAllMatches(nums,isSevenChange); const matches=state.sequentialOnly?filterSequentialMatches(all,p,nums.length,state.sevenChains):all;
+  const matcher=window.isSevenChange||isSevenChange;
+  const all=findAllMatches(nums,matcher); const matches=state.sequentialOnly?filterSequentialMatches(all,p,nums.length,state.sevenChains):all;
   if(!state.sequentialOnly)state.sevenChains=[]; state.sevenMatches=matches;
   renderWorkingTable('sevenResultTable',makeHighlights(matches),'seven-change-data-table',true);
   setStatus('sevenResultStatus',matches,all.length,p,'7-change',state.sevenChains); renderDetails('sevenMatchDetails',matches);
