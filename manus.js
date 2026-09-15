@@ -25,18 +25,21 @@ function manusTargetCounts(source, change, mode) {
   return targets;
 }
 
+// Digit order is ignored. Replace one source digit with the Manus target digit;
+// the other two digits must be the same as a multiset.
 function sameTwoDigitsExcept(source, target, changedIndex, targetDigit) {
   const a = normalize3(source), b = normalize3(target);
   if (!/^\d{3}$/.test(a) || !/^\d{3}$/.test(b)) return false;
-  const remainingA = [], remainingB = [];
-  for (let i = 0; i < 3; i++) {
-    if (i === changedIndex) continue;
-    remainingA.push(a[i]);
-    remainingB.push(b[i]);
+  const sourceCounts = digitCounts(a);
+  const targetCounts = digitCounts(b);
+  const fromDigit = Number(a[changedIndex]);
+  if (sourceCounts[fromDigit] < 1 || targetCounts[targetDigit] < 1) return false;
+  sourceCounts[fromDigit]--;
+  targetCounts[targetDigit]--;
+  for (let d = 0; d <= 9; d++) {
+    if (sourceCounts[d] !== targetCounts[d]) return false;
   }
-  remainingA.sort();
-  remainingB.sort();
-  return remainingA.join('') === remainingB.join('') && Number(b[changedIndex]) === targetDigit;
+  return true;
 }
 
 function manusMinusChange(a, b, change) {
