@@ -11,7 +11,8 @@ function calculateNineChange(){
   if(!state.data.length)return; const p=parseP($('pattern').value),nums=getNumbers();
   if(p===null){$('nineResultStatus').textContent='Please enter 0p–7p.';state.nineChains=[];renderWorkingTable('nineResultTable',new Map(),'nine-change-data-table',true);$('nineMatchDetails').innerHTML='';return;}
   if(!nums.length){state.nineMatches=[];state.nineChains=[];renderWorkingTable('nineResultTable',new Map(),'nine-change-data-table',true);$('nineMatchDetails').innerHTML='';$('nineResultStatus').textContent='Paste at least one 3-digit number.';return;}
-  const all=findAllMatches(nums,isNineChange); const matches=state.sequentialOnly?filterSequentialMatches(all,p,nums.length,state.nineChains):all;
+  const matcher=window.isNineChange||isNineChange;
+  const all=findAllMatches(nums,matcher); const matches=state.sequentialOnly?filterSequentialMatches(all,p,nums.length,state.nineChains):all;
   if(!state.sequentialOnly)state.nineChains=[]; state.nineMatches=matches;
   renderWorkingTable('nineResultTable',makeHighlights(matches),'nine-change-data-table',true);
   setStatus('nineResultStatus',matches,all.length,p,'9-change',state.nineChains); renderDetails('nineMatchDetails',matches);
