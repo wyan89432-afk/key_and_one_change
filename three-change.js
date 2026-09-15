@@ -1,22 +1,23 @@
-// Three Change Table extension.
-// Uses the same search bar, 0p–7p spacing, sequential mode, colors and arrows
-// as the existing 1 Change and Two Change tables.
+// Three Change Table
+// Rule: compare the pasted number with each Fixed/working-table cell by digit position.
+// Exactly ONE position must change by +3 or -3 on the circular 0-9 wheel;
+// the other TWO positions must stay exactly the same.
+// Examples: 205 -> 235, 163 -> 133, 005 -> 002.
 
 function isThreeChange(a, b) {
   const x = normalize3(a), y = normalize3(b);
   if (!/^\d{3}$/.test(x) || !/^\d{3}$/.test(y)) return false;
-  const A = digitCounts(x), B = digitCounts(y);
-  let shared = 0;
-  for (let d = 0; d <= 9; d++) shared += Math.min(A[d], B[d]);
-  if (shared !== 2) return false;
-  let from = -1, to = -1;
-  for (let d = 0; d <= 9; d++) {
-    if (A[d] > B[d]) from = d;
-    if (B[d] > A[d]) to = d;
+
+  let changed = 0;
+  for (let i = 0; i < 3; i++) {
+    const from = Number(x[i]);
+    const to = Number(y[i]);
+    if (from === to) continue;
+    const diff = Math.abs(from - to);
+    if (diff !== 3 && diff !== 7) return false;
+    changed++;
   }
-  if (from < 0 || to < 0) return false;
-  const diff = Math.abs(from - to);
-  return diff === 3 || diff === 7;
+  return changed === 1;
 }
 
 function renderThreeTable(highlights) {
@@ -74,12 +75,14 @@ function drawThreeSequentialArrows() {
   if (!state.sequentialOnly || !state.threeChains?.length) return;
   const table = wrap.querySelector('.three-change-data-table');
   if (!table) return;
+
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.classList.add('arrow-layer');
   svg.setAttribute('width', table.offsetWidth);
   svg.setAttribute('height', table.offsetHeight);
   svg.setAttribute('viewBox', `0 0 ${table.offsetWidth} ${table.offsetHeight}`);
   svg.setAttribute('aria-hidden', 'true');
+
   const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
   const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
   marker.setAttribute('id', 'three-blueArrowHead');
@@ -94,11 +97,13 @@ function drawThreeSequentialArrows() {
   marker.appendChild(head);
   defs.appendChild(marker);
   svg.appendChild(defs);
+
   const point = m => table.querySelector(`td[data-row="${m.row}"][data-col="${m.col}"]`);
   const rect = el => {
     const r = el.getBoundingClientRect(), wr = wrap.getBoundingClientRect();
     return { left: r.left - wr.left + wrap.scrollLeft, right: r.right - wr.left + wrap.scrollLeft, midY: (r.top + r.bottom) / 2 - wr.top + wrap.scrollTop };
   };
+
   state.threeChains.forEach(chain => {
     for (let i = 0; i < chain.length - 1; i++) {
       const ca = point(chain[i]), cb = point(chain[i + 1]);
