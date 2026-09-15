@@ -1,8 +1,6 @@
 // Manus subtraction modes for all Change tables.
-// Mode 3 is the default automatic mode.
-const manusState = {
-  mode: 'third'
-};
+// Third Manus is the default automatic mode.
+const manusState = { mode: 'third' };
 
 function manusSubtractDigit(digit, change) {
   return (digit - change + 10) % 10;
@@ -13,7 +11,6 @@ function manusTargetCounts(source, change, mode) {
   if (!/^\d{3}$/.test(x)) return [];
   const digits = x.split('').map(Number);
   const targets = [];
-
   digits.forEach((d, index) => {
     let target = null;
     if (mode === 'first') {
@@ -31,8 +28,7 @@ function manusTargetCounts(source, change, mode) {
 function sameTwoDigitsExcept(source, target, changedIndex, targetDigit) {
   const a = normalize3(source), b = normalize3(target);
   if (!/^\d{3}$/.test(a) || !/^\d{3}$/.test(b)) return false;
-  const remainingA = [];
-  const remainingB = [];
+  const remainingA = [], remainingB = [];
   for (let i = 0; i < 3; i++) {
     if (i === changedIndex) continue;
     remainingA.push(a[i]);
@@ -44,10 +40,11 @@ function sameTwoDigitsExcept(source, target, changedIndex, targetDigit) {
 }
 
 function manusMinusChange(a, b, change) {
-  const targets = manusTargetCounts(a, change, manusState.mode);
-  return targets.some(item => sameTwoDigitsExcept(a, b, item.index, item.to));
+  return manusTargetCounts(a, change, manusState.mode)
+    .some(item => sameTwoDigitsExcept(a, b, item.index, item.to));
 }
 
+// Keep the existing +N behavior while Manus controls the -N side.
 function normalPlusChange(a, b, change) {
   const x = normalize3(a), y = normalize3(b);
   if (!/^\d{3}$/.test(x) || !/^\d{3}$/.test(y)) return false;
@@ -68,24 +65,43 @@ function isManusChange(a, b, change) {
   return normalPlusChange(a, b, change) || manusMinusChange(a, b, change);
 }
 
+function installManusMatchers() {
+  const names = [
+    ['isOneChange', 1], ['isTwoChange', 2], ['isThreeChange', 3],
+    ['isFourChange', 4], ['isFiveChange', 5], ['isSixChange', 6],
+    ['isSevenChange', 7], ['isEightChange', 8], ['isNineChange', 9]
+  ];
+  names.forEach(([name, change]) => {
+    if (typeof window[name] !== 'function') return;
+    window[name] = function(a, b) {
+      return isManusChange(a, b, change);
+    };
+  });
+}
+
 function setManusMode(mode) {
   manusState.mode = mode;
   document.querySelectorAll('.manus-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.manusMode === mode);
   });
+  installManusMatchers();
   if (typeof calculate === 'function') calculate();
 }
 
 function initManusButtons() {
+  installManusMatchers();
   document.querySelectorAll('.manus-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const requested = btn.dataset.manusMode;
       setManusMode(manusState.mode === requested ? 'third' : requested);
     });
-  });
-  document.querySelectorAll('.manus-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.manusMode === manusState.mode);
   });
+  if (typeof calculate === 'function') calculate();
 }
 
-document.addEventListener('DOMContentLoaded', initManusButtons);
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initManusButtons);
+} else {
+  initManusButtons();
+}
