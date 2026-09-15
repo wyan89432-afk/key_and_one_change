@@ -62,24 +62,90 @@ function renderTwoSameDetails(matches) {
   wrap.appendChild(table);
 }
 
+function colorLabel(color) {
+  return ({
+    yellow: '🟡 Yellow',
+    green: '💚 Green',
+    red: '❤️ Red',
+    blue: '🔵 Blue',
+    brown: '🟤 Brown'
+  })[color] || color;
+}
+
+function renderTwoSameSequentialReport(chains) {
+  const wrap = $('twoSameMatchDetails');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  wrap.classList.add('detail-table-wrap');
+  wrap.hidden = !state.sequentialOnly;
+
+  const heading = document.createElement('h3');
+  heading.textContent = 'အစဉ်လိုက် Report';
+  wrap.appendChild(heading);
+
+  if (!state.sequentialOnly) return;
+  if (!chains.length) {
+    const p = document.createElement('p');
+    p.className = 'muted';
+    p.textContent = 'Complete sequential match မတွေ့ပါ။';
+    wrap.appendChild(p);
+    return;
+  }
+
+  const table = document.createElement('table');
+  table.className = 'result-table';
+  table.innerHTML = '<thead><tr><th>Group</th><th>Color</th><th>Column</th><th>Numbers</th></tr></thead>';
+  const body = document.createElement('tbody');
+
+  chains.forEach((chain, chainIndex) => {
+    const tr = document.createElement('tr');
+    const columns = chain.map(m => state.headers[m.col] || `C${m.col + 1}`);
+    const uniqueColumns = [...new Set(columns)];
+    const numbers = chain.map(m => m.value);
+    const color = chain[0]?.color || 'yellow';
+    [
+      chainIndex + 1,
+      colorLabel(color),
+      uniqueColumns.join(' → '),
+      numbers.join(' → ')
+    ].forEach(v => {
+      const td = document.createElement('td');
+      td.textContent = v;
+      tr.appendChild(td);
+    });
+    body.appendChild(tr);
+  });
+  table.appendChild(body);
+  wrap.appendChild(table);
+}
+
 function calculateTwoSameNumbers() {
   if (!state.data.length) return;
   const nums = getNumbers();
   if (!nums.length) {
     state.twoSameMatches = [];
+    state.twoSameChains = [];
     renderWorkingTable('twoSameResultTable', new Map(), 'two-same-data-table', false);
     renderTwoSameDetails([]);
     $('twoSameResultStatus').textContent = 'Paste at least one 3-digit number.';
     return;
   }
 
-  const matches = findTwoSameMatches(nums);
+  const allMatches = findTwoSameMatches(nums);
+  const chains = [];
+  const matches = state.sequentialOnly
+    ? filterSequentialMatches(allMatches, parseP($('pattern').value), nums.length, chains)
+    : allMatches;
+
   state.twoSameMatches = matches;
+  state.twoSameChains = chains;
   renderWorkingTable('twoSameResultTable', makeHighlights(matches), 'two-same-data-table', false);
-  $('twoSameResultStatus').textContent = matches.length
-    ? `${matches.length} matches found • at least 2 digits same.`
-    : 'No match found • at least 2 digits must be same.';
-  renderTwoSameDetails(matches);
+  $('twoSameResultStatus').textContent = state.sequentialOnly
+    ? (chains.length ? `${chains.length} complete sequential group(s) found.` : 'No complete sequential group found.')
+    : (matches.length ? `${matches.length} matches found • at least 2 digits same.` : 'No match found • at least 2 digits must be same.');
+
+  if (state.sequentialOnly) renderTwoSameSequentialReport(chains);
+  else renderTwoSameDetails(matches);
 }
 
 function setupDetailToggle() {
@@ -112,6 +178,7 @@ function setupDetailToggle() {
 }
 
 state.twoSameMatches = state.twoSameMatches || [];
+state.twoSameChains = state.twoSameChains || [];
 state.detailsVisible = false;
 
 const calculateBeforeTwoSame = calculate;
@@ -123,6 +190,7 @@ calculate = function() {
 const clearBeforeTwoSame = $('clearBtn').onclick;
 $('clearBtn').addEventListener('click', () => {
   state.twoSameMatches = [];
+  state.twoSameChains = [];
   if ($('twoSameResultStatus')) $('twoSameResultStatus').textContent = state.data.length ? 'Cleared.' : 'Upload the fixed table to begin.';
   if ($('twoSameMatchDetails')) $('twoSameMatchDetails').innerHTML = '';
   if ($('twoSameResultTable')) renderWorkingTable('twoSameResultTable', new Map(), 'two-same-data-table', false);
