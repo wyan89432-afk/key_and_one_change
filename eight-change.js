@@ -1,8 +1,23 @@
-function isEightChange(a,b){const x=normalize3(a),y=normalize3(b);if(!/^\d{3}$/.test(x)||!/^\d{3}$/.test(y))return false;const A=digitCounts(x),B=digitCounts(y);let shared=0;for(let d=0;d<=9;d++)shared+=Math.min(A[d],B[d]);if(shared!==2)return false;let from=-1,to=-1;for(let d=0;d<=9;d++){if(A[d]>B[d])from=d;if(B[d]>A[d])to=d;}if(from<0||to<0)return false;const diff=Math.abs(from-to);return diff===2||diff===8;}
-function renderEightTable(matches){const el=document.getElementById('eightResultTable');if(!el)return;if(!matches.length){el.innerHTML='';return;}el.innerHTML=matches.map(m=>`<span class="match-chip color-${m.color}" data-linear="${m.linear}">${m.value}</span>`).join(' ');}
-function drawEightSequentialArrows(matches){const el=document.getElementById('eightResultTable');if(!el)return;el.querySelectorAll('.eight-arrow').forEach(x=>x.remove());if(!matches||matches.length<2)return;for(let i=1;i<matches.length;i++){const from=el.querySelector(`[data-linear="${matches[i-1].linear}"]`);if(!from)continue;const arrow=document.createElement('span');arrow.className='eight-arrow';arrow.textContent='→';from.insertAdjacentElement('afterend',arrow);}}
-function calculateEightChange(){if(!state.data||!state.data.length)return;const inputs=getNumbers();const p=parseP(document.getElementById('pattern')?.value||'0p');let matches=findAllMatches(inputs,isEightChange);if(state.sequentialOnly){state.eightChains=[];matches=filterSequentialMatches(matches,p,inputs.length,state.eightChains);}matches.forEach((m,i)=>{m.color=['yellow','green','red','blue','brown'][i%5];});state.eightMatches=matches;renderEightTable(matches);drawEightSequentialArrows(matches);const status=document.getElementById('eightResultStatus');const meta=document.getElementById('eightChangeMeta');if(status)setStatus(status,`${matches.length} match${matches.length===1?'':'es'}`);if(meta)meta.textContent=`${inputs.length} input • ${matches.length} matches`;const details=document.getElementById('eightMatchDetails');if(details)renderDetails(details,matches);}
-const previousCalculateForEight=window.calculate;window.calculate=function(){if(previousCalculateForEight)previousCalculateForEight();calculateEightChange();};
-const previousUpdateMetaForEight=window.updateMeta;window.updateMeta=function(){if(previousUpdateMetaForEight)previousUpdateMetaForEight();const meta=document.getElementById('eightChangeMeta');if(meta)meta.textContent=state.data?.length?`${getNumbers().length} input • ${(state.eightMatches||[]).length} matches`:'No table loaded';};
-document.getElementById('clearBtn')?.addEventListener('click',()=>{state.eightMatches=[];state.eightChains=[];const table=document.getElementById('eightResultTable');const details=document.getElementById('eightMatchDetails');if(table)table.innerHTML='';if(details)details.innerHTML='';});
-document.addEventListener('DOMContentLoaded',()=>calculateEightChange());
+// Eight Change Table
+// Exactly two digits are shared; one unmatched digit changes by +8 or -8 on the circular 0-9 wheel.
+function isEightChange(a,b){
+  const x=normalize3(a),y=normalize3(b); if(!/^\d{3}$/.test(x)||!/^\d{3}$/.test(y))return false;
+  const A=digitCounts(x),B=digitCounts(y); let shared=0;
+  for(let d=0;d<=9;d++)shared+=Math.min(A[d],B[d]); if(shared!==2)return false;
+  let from=-1,to=-1; for(let d=0;d<=9;d++){if(A[d]>B[d])from=d;if(B[d]>A[d])to=d;}
+  if(from<0||to<0)return false; const diff=Math.abs(from-to); return diff===2||diff===8;
+}
+function calculateEightChange(){
+  if(!state.data.length)return; const p=parseP($('pattern').value),nums=getNumbers();
+  if(p===null){$('eightResultStatus').textContent='Please enter 0p–7p.';state.eightChains=[];renderWorkingTable('eightResultTable',new Map(),'eight-change-data-table',true);$('eightMatchDetails').innerHTML='';return;}
+  if(!nums.length){state.eightMatches=[];state.eightChains=[];renderWorkingTable('eightResultTable',new Map(),'eight-change-data-table',true);$('eightMatchDetails').innerHTML='';$('eightResultStatus').textContent='Paste at least one 3-digit number.';return;}
+  const all=findAllMatches(nums,isEightChange); const matches=state.sequentialOnly?filterSequentialMatches(all,p,nums.length,state.eightChains):all;
+  if(!state.sequentialOnly)state.eightChains=[]; state.eightMatches=matches;
+  renderWorkingTable('eightResultTable',makeHighlights(matches),'eight-change-data-table',true);
+  setStatus('eightResultStatus',matches,all.length,p,'8-change',state.eightChains); renderDetails('eightMatchDetails',matches);
+}
+const previousCalculateEight=calculate; calculate=function(){previousCalculateEight();calculateEightChange();};
+const previousUpdateMetaEight=updateMeta; updateMeta=function(sourceName='Edited working table'){previousUpdateMetaEight(sourceName);if($('eightChangeMeta'))$('eightChangeMeta').textContent=`${state.data.length} rows × ${state.headers.length} columns`;};
+state.eightMatches=state.eightMatches||[];state.eightChains=state.eightChains||[];
+$('clearBtn').addEventListener('click',()=>{state.eightMatches=[];state.eightChains=[];$('eightResultStatus').textContent=state.data.length?'Cleared.':'Upload the fixed table to begin.';$('eightMatchDetails').innerHTML='';renderWorkingTable('eightResultTable',new Map(),'eight-change-data-table',true);});
+if(state.data.length)calculateEightChange();
