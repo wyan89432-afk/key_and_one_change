@@ -3,18 +3,18 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Fixed Table • 1, 2, 3 & 4 Change Search</title>
+  <title>Fixed Table • 1, 2, 3, 4 & 5 Change Search</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <main class="app">
     <header class="hero">
-      <div><h1>Fixed Table • 1, 2, 3 & 4 Change Search</h1><p>Upload the fixed table, paste 3-digit numbers, then search with 0p–7p.</p></div>
+      <div><h1>Fixed Table • 1, 2, 3, 4 & 5 Change Search</h1><p>Upload the fixed table, paste 3-digit numbers, then search with 0p–7p.</p></div>
       <label class="upload"><span>📁 Upload Fixed Table</span><input id="fileInput" type="file" accept=".csv,.xlsx,.xls" /></label>
     </header>
     <section class="panel">
       <div class="search-row"><label for="pattern">Search 🔍</label><input id="pattern" type="text" inputmode="text" placeholder="0p" maxlength="2" value="0p" /><button id="calculateBtn">Calculate</button><button id="sequentialBtn" class="sequential-btn" type="button">အစဉ်လိုက်</button><button id="clearBtn" class="secondary">Clear</button></div>
-      <p class="hint">Search bar တစ်ခုတည်းဖြင့် <b>1 Change</b>၊ <b>Two Change</b>၊ <b>Three Change</b> နှင့် <b>Four Change Table</b> လေးခုလုံး အလိုအလျောက်အလုပ်လုပ်ပါမည်။ 0p–7p နှင့် အစဉ်လိုက် mode ကို လေးခုလုံးတွင် တူညီစွာအသုံးပြုပါမည်။ Fixed Table သည် source table သာဖြစ်ပြီး logic / color / arrow မပြပါ။</p>
+      <p class="hint">Search bar တစ်ခုတည်းဖြင့် <b>1 Change</b>၊ <b>Two Change</b>၊ <b>Three Change</b>၊ <b>Four Change</b> နှင့် <b>Five Change Table</b> အားလုံး အလိုအလျောက်အလုပ်လုပ်ပါမည်။ 0p–7p နှင့် အစဉ်လိုက် mode ကို အားလုံးတွင် တူညီစွာအသုံးပြုပါမည်။ Fixed Table သည် source table သာဖြစ်ပြီး logic / color / arrow မပြပါ။</p>
     </section>
     <section class="grid two-col">
       <div class="panel"><h2>Paste 3-digit numbers</h2><textarea id="inputNumbers" placeholder="514\n612\n077\n387\n770\n184\n495\n214\n479\n615\n212"></textarea><div class="stats" id="inputStats">0 numbers</div></div>
@@ -23,11 +23,13 @@
     <section class="panel"><div class="section-head"><div><h2>Two Change Table</h2><p class="muted">2+ and 2− circular digit changes are checked automatically. Digit order does not matter. Colors and blue curve arrows follow the same rules as 1 Change Table.</p></div><div id="twoChangeMeta" class="stats">No table loaded</div></div><div id="twoResultStatus" class="status">Waiting for table.</div><div id="twoResultTable" class="result-wrap"></div><div id="twoMatchDetails" class="result-wrap"></div></section>
     <section class="panel"><div class="section-head"><div><h2>Three Change Table</h2><p class="muted">3+ and 3− circular digit changes are checked automatically. Digit order does not matter. Colors and blue curve arrows follow the same rules.</p></div><div id="threeChangeMeta" class="stats">No table loaded</div></div><div id="threeResultStatus" class="status">Waiting for table.</div><div id="threeResultTable" class="result-wrap"></div><div id="threeMatchDetails" class="result-wrap"></div></section>
     <section class="panel"><div class="section-head"><div><h2>Four Change Table</h2><p class="muted">4+ and 4− circular digit changes are checked automatically. Exactly one digit changes; the other two digits may be in any positions. Digit order does not matter. Colors and blue curve arrows follow the same rules.</p></div><div id="fourChangeMeta" class="stats">No table loaded</div></div><div id="fourResultStatus" class="status">Waiting for table.</div><div id="fourResultTable" class="result-wrap"></div><div id="fourMatchDetails" class="result-wrap"></div></section>
+    <section class="panel"><div class="section-head"><div><h2>Five Change Table</h2><p class="muted">5+ and 5− circular digit changes are checked automatically. Exactly one digit changes; the other two digits may be in any positions. Digit order does not matter. Colors and blue curve arrows follow the same rules.</p></div><div id="fiveChangeMeta" class="stats">No table loaded</div></div><div id="fiveResultStatus" class="status">Waiting for table.</div><div id="fiveResultTable" class="result-wrap"></div><div id="fiveMatchDetails" class="result-wrap"></div></section>
     <section class="panel"><div class="section-head"><div><h2>Fixed Table</h2><p class="muted">Source table only. No color, no curve arrow and no sequential logic is drawn here. Leftmost <b>0</b> heading is the row-number column; rows start at 1.</p></div><div id="tableMeta" class="stats">No table loaded</div></div><div id="fixedTable" class="fixed-wrap"></div></section>
   </main>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="app.js"></script>
   <script src="three-change.js"></script>
   <script src="four-change.js"></script>
+  <script src="five-change.js"></script>
 </body>
 </html>
