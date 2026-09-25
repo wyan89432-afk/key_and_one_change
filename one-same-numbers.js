@@ -7,6 +7,8 @@ function isOneSameNumbers(a, b) {
   return sharedDigitCount(x, y) === 1;
 }
 
+const ONE_SAME_COLORS = ['yellow', 'green', 'red', 'blue'];
+
 function findOneSameMatches(inputs) {
   const matches = [];
   const rows = state.data.length;
@@ -23,7 +25,7 @@ function findOneSameMatches(inputs) {
             value,
             input,
             index: inputIndex + 1,
-            color: COLORS[inputIndex % COLORS.length]
+            color: ONE_SAME_COLORS[inputIndex % ONE_SAME_COLORS.length]
           });
         }
       }
@@ -32,13 +34,74 @@ function findOneSameMatches(inputs) {
   return matches;
 }
 
+// Sequential mode for 1 Same:
+// Each pasted input must have one or more 1-Same matches somewhere in the
+// next consecutive Fixed Table row. Column does not have to be the same.
+// The first input can start at any table row; the full input list must occupy
+// consecutive rows. All matching cells in those rows are highlighted.
+function filterOneSameSequentialMatches(inputs, chainStore) {
+  chainStore.length = 0;
+  if (!inputs.length || !state.data.length) return [];
+
+  const rows = state.data.length;
+  const cols = state.headers.length;
+  const rowGroups = [];
+
+  for (let inputIndex = 0; inputIndex < inputs.length; inputIndex++) {
+    const input = inputs[inputIndex];
+    const group = [];
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const value = state.data[row]?.[col] || '';
+        if (isOneSameNumbers(input, value)) {
+          group.push({
+            linear: col * rows + row,
+            row,
+            col,
+            value,
+            input,
+            index: inputIndex + 1,
+            color: ONE_SAME_COLORS[inputIndex % ONE_SAME_COLORS.length]
+          });
+        }
+      }
+    }
+    rowGroups.push(group);
+  }
+
+  for (let startRow = 0; startRow <= rows - inputs.length; startRow++) {
+    const chain = [];
+    let complete = true;
+
+    for (let i = 0; i < inputs.length; i++) {
+      const targetRow = startRow + i;
+      const rowMatches = rowGroups[i].filter(m => m.row === targetRow);
+      if (!rowMatches.length) {
+        complete = false;
+        break;
+      }
+      chain.push(...rowMatches);
+    }
+
+    if (complete) {
+      chainStore.push(chain);
+    }
+  }
+
+  const unique = new Map();
+  chainStore.forEach(chain => chain.forEach(m => {
+    const key = `${m.col}:${m.row}:${m.index}`;
+    if (!unique.has(key)) unique.set(key, m);
+  }));
+  return Array.from(unique.values()).sort((a, b) => a.row - b.row || a.col - b.col || a.index - b.index);
+}
+
 function colorLabelOneSame(color) {
   return ({
     yellow: '🟡 Yellow',
     green: '💚 Green',
     red: '❤️ Red',
-    blue: '🔵 Blue',
-    brown: '🟤 Brown'
+    blue: '🔵 Blue'
   })[color] || color;
 }
 
@@ -82,26 +145,25 @@ function renderOneSameSequentialReport(chains) {
   if (!chains.length) {
     const p = document.createElement('p');
     p.className = 'muted';
-    p.textContent = 'Complete sequential match မတွေ့ပါ။';
+    p.textContent = 'Complete sequential 7-row match မတွေ့ပါ။';
     wrap.appendChild(p);
     return;
   }
 
   const table = document.createElement('table');
   table.className = 'result-table';
-  table.innerHTML = '<thead><tr><th>Group</th><th>Color</th><th>Column</th><th>Numbers</th></tr></thead>';
+  table.innerHTML = '<thead><tr><th>Group</th><th>Color</th><th>Rows</th><th>Numbers</th></tr></thead>';
   const body = document.createElement('tbody');
 
   chains.forEach((chain, chainIndex) => {
     const tr = document.createElement('tr');
-    const columns = chain.map(m => state.headers[m.col] || `C${m.col + 1}`);
-    const uniqueColumns = [...new Set(columns)];
+    const rowRange = chain.length ? [...new Set(chain.map(m => m.row + 1))].sort((a, b) => a - b) : [];
     const numbers = chain.map(m => m.value);
     const color = chain[0]?.color || 'yellow';
     [
       chainIndex + 1,
       colorLabelOneSame(color),
-      uniqueColumns.join(' → '),
+      rowRange.join(' → '),
       numbers.join(' → ')
     ].forEach(v => {
       const td = document.createElement('td');
@@ -129,14 +191,14 @@ function calculateOneSameNumbers() {
   const allMatches = findOneSameMatches(nums);
   const chains = [];
   const matches = state.sequentialOnly
-    ? filterSequentialMatches(allMatches, parseP($('pattern').value), nums.length, chains)
+    ? filterOneSameSequentialMatches(nums, chains)
     : allMatches;
 
   state.oneSameMatches = matches;
   state.oneSameChains = chains;
   renderWorkingTable('oneSameResultTable', makeHighlights(matches), 'one-same-data-table', false);
   $('oneSameResultStatus').textContent = state.sequentialOnly
-    ? (chains.length ? `${chains.length} complete sequential group(s) found.` : 'No complete sequential group found.')
+    ? (chains.length ? `${chains.length} complete 7-row sequential group(s) found.` : 'No complete 7-row sequential group found.')
     : (matches.length ? `${matches.length} matches found • exactly 1 digit same.` : 'No match found • exactly 1 digit must be same.');
 
   if (state.sequentialOnly) renderOneSameSequentialReport(chains);
