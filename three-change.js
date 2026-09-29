@@ -151,7 +151,12 @@ function calculateThreeChange() {
     $('threeResultStatus').textContent = 'Paste at least one 3-digit number.';
     return;
   }
-  const allThree = findAllMatches(nums, isThreeChange);
+  // Manus modes must be applied directly here so Three Change does not depend
+  // on replacing the global matcher from manus.js.
+  const threeMatcher = (typeof isManusChange === 'function')
+    ? ((a, b) => isManusChange(a, b, 3))
+    : isThreeChange;
+  const allThree = findAllMatches(nums, threeMatcher);
   const threeMatches = state.sequentialOnly
     ? filterSequentialMatches(allThree, p, nums.length, state.threeChains)
     : allThree;
