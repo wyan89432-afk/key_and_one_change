@@ -5,7 +5,7 @@ function isNineChange(a,b){
   const A=digitCounts(x),B=digitCounts(y); let shared=0;
   for(let d=0;d<=9;d++)shared+=Math.min(A[d],B[d]); if(shared!==2)return false;
   let from=-1,to=-1; for(let d=0;d<=9;d++){if(A[d]>B[d])from=d;if(B[d]>A[d])to=d;}
-  if(from<0||to<0)return false; const diff=Math.abs(from-to); return diff===1||diff===9;
+  if(from<0||to<0)return false; const diff=Math.abs(from-to); return diff===9;
 }
 function calculateNineChange(){
   if(!state.data.length)return; const p=parseP($('pattern').value),nums=getNumbers();
