@@ -111,7 +111,8 @@ function calculateFourChange() {
   const nums = getNumbers();
   if (p === null) { $('fourResultStatus').textContent='Please enter 0p, 1p, 2p, 3p, 4p, 5p, 6p or 7p.'; state.fourChains=[]; renderFourTable(new Map()); $('fourMatchDetails').innerHTML=''; return; }
   if (!nums.length) { state.fourMatches=[]; state.fourChains=[]; renderFourTable(new Map()); $('fourMatchDetails').innerHTML=''; $('fourResultStatus').textContent='Paste at least one 3-digit number.'; return; }
-  const allFour=findAllMatches(nums,isFourChange);
+  const matcher=typeof isManusChange==='function' ? ((a,b)=>isManusChange(a,b,4)) : isFourChange;
+  const allFour=findAllMatches(nums,matcher);
   const fourMatches=state.sequentialOnly ? filterSequentialMatches(allFour,p,nums.length,state.fourChains) : allFour;
   if(!state.sequentialOnly) state.fourChains=[];
   state.fourMatches=fourMatches;
