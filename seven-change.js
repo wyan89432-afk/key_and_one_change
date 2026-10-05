@@ -11,7 +11,7 @@ function calculateSevenChange(){
   if(!state.data.length)return; const p=parseP($('pattern').value),nums=getNumbers();
   if(p===null){$('sevenResultStatus').textContent='Please enter 0p–7p.';state.sevenChains=[];renderWorkingTable('sevenResultTable',new Map(),'seven-change-data-table',true);$('sevenMatchDetails').innerHTML='';return;}
   if(!nums.length){state.sevenMatches=[];state.sevenChains=[];renderWorkingTable('sevenResultTable',new Map(),'seven-change-data-table',true);$('sevenMatchDetails').innerHTML='';$('sevenResultStatus').textContent='Paste at least one 3-digit number.';return;}
-  const matcher=window.isSevenChange||isSevenChange;
+  const matcher=typeof isManusChange==='function' ? ((a,b)=>isManusChange(a,b,7)) : isSevenChange;
   const all=findAllMatches(nums,matcher); const matches=state.sequentialOnly?filterSequentialMatches(all,p,nums.length,state.sevenChains):all;
   if(!state.sequentialOnly)state.sevenChains=[]; state.sevenMatches=matches;
   renderWorkingTable('sevenResultTable',makeHighlights(matches),'seven-change-data-table',true);
