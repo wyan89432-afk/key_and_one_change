@@ -110,7 +110,8 @@ function calculateFiveChange() {
   const nums = getNumbers();
   if (p === null) { $('fiveResultStatus').textContent='Please enter 0p, 1p, 2p, 3p, 4p, 5p, 6p or 7p.'; state.fiveChains=[]; renderFiveTable(new Map()); $('fiveMatchDetails').innerHTML=''; return; }
   if (!nums.length) { state.fiveMatches=[]; state.fiveChains=[]; renderFiveTable(new Map()); $('fiveMatchDetails').innerHTML=''; $('fiveResultStatus').textContent='Paste at least one 3-digit number.'; return; }
-  const allFive=findAllMatches(nums,isFiveChange);
+  const matcher=typeof isManusChange==='function' ? ((a,b)=>isManusChange(a,b,5)) : isFiveChange;
+  const allFive=findAllMatches(nums,matcher);
   const fiveMatches=state.sequentialOnly ? filterSequentialMatches(allFive,p,nums.length,state.fiveChains) : allFive;
   if(!state.sequentialOnly) state.fiveChains=[];
   state.fiveMatches=fiveMatches;
