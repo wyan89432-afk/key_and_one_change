@@ -14,7 +14,7 @@ function isThreeChange(a, b) {
     const to = Number(y[i]);
     if (from === to) continue;
     const diff = Math.abs(from - to);
-    if (diff !== 3 && diff !== 7) return false;
+    if (diff !== 3) return false;
     changed++;
   }
   return changed === 1;
