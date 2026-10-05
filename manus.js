@@ -61,7 +61,7 @@ function normalPlusChange(a, b, change) {
     if (B[d] > A[d]) to = d;
   }
   if (from < 0 || to < 0) return false;
-  return (to - from + 10) % 10 === change;
+  return to - from === change;
 }
 
 function isManusChange(a, b, change) {
