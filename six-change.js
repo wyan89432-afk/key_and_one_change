@@ -48,7 +48,8 @@ function calculateSixChange(){
   if(!state.data.length)return; const p=parseP($('pattern').value); const nums=getNumbers();
   if(p===null){$('sixResultStatus').textContent='Please enter 0p, 1p, 2p, 3p, 4p, 5p, 6p or 7p.';state.sixChains=[];renderSixTable(new Map());$('sixMatchDetails').innerHTML='';return;}
   if(!nums.length){state.sixMatches=[];state.sixChains=[];renderSixTable(new Map());$('sixMatchDetails').innerHTML='';$('sixResultStatus').textContent='Paste at least one 3-digit number.';return;}
-  const allSix=findAllMatches(nums,isSixChange); const sixMatches=state.sequentialOnly?filterSequentialMatches(allSix,p,nums.length,state.sixChains):allSix; if(!state.sequentialOnly)state.sixChains=[]; state.sixMatches=sixMatches; renderSixTable(makeHighlights(sixMatches)); setStatus('sixResultStatus',sixMatches,allSix.length,p,'6-change',state.sixChains); renderDetails('sixMatchDetails',sixMatches);
+  const matcher=typeof isManusChange==='function' ? ((a,b)=>isManusChange(a,b,6)) : isSixChange;
+  const allSix=findAllMatches(nums,matcher); const sixMatches=state.sequentialOnly?filterSequentialMatches(allSix,p,nums.length,state.sixChains):allSix; if(!state.sequentialOnly)state.sixChains=[]; state.sixMatches=sixMatches; renderSixTable(makeHighlights(sixMatches)); setStatus('sixResultStatus',sixMatches,allSix.length,p,'6-change',state.sixChains); renderDetails('sixMatchDetails',sixMatches);
 }
 
 const previousCalculateSix=calculate; calculate=function(){previousCalculateSix();calculateSixChange();};
