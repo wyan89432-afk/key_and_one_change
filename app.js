@@ -48,7 +48,7 @@ function isOneChange(a, b) {
   }
   if (from < 0 || to < 0) return false;
   const diff = Math.abs(from - to);
-  return diff === 1 || diff === 9;
+  return diff === 1;
 }
 
 // Two Change: same two shared digits, but the unmatched digit changes by
@@ -68,7 +68,7 @@ function isTwoChange(a, b) {
   }
   if (from < 0 || to < 0) return false;
   const diff = Math.abs(from - to);
-  return diff === 2 || diff === 8;
+  return diff === 2;
 }
 
 function updateMeta(sourceName = 'Edited working table') {
