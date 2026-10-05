@@ -15,7 +15,7 @@ function isSixChange(a, b) {
   }
   if (from < 0 || to < 0) return false;
   const diff = Math.abs(from - to);
-  return diff === 4 || diff === 6;
+  return diff === 6;
 }
 
 function renderSixTable(highlights) {
