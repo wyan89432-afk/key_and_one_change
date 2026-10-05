@@ -437,8 +437,10 @@ function calculate() {
     return;
   }
 
-  const allOne = findAllMatches(nums, isOneChange);
-  const allTwo = findAllMatches(nums, isTwoChange);
+  const oneMatcher = typeof isManusChange === 'function' ? ((a, b) => isManusChange(a, b, 1)) : isOneChange;
+  const twoMatcher = typeof isManusChange === 'function' ? ((a, b) => isManusChange(a, b, 2)) : isTwoChange;
+  const allOne = findAllMatches(nums, oneMatcher);
+  const allTwo = findAllMatches(nums, twoMatcher);
   const oneMatches = state.sequentialOnly ? filterSequentialMatches(allOne, p, nums.length, state.oneChains) : allOne;
   const twoMatches = state.sequentialOnly ? filterSequentialMatches(allTwo, p, nums.length, state.twoChains) : allTwo;
   if (!state.sequentialOnly) {
